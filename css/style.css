@@ -2349,3 +2349,44 @@ footer {
     80% { transform: translate(2px, -2px); }
     100% { transform: translate(0); }
 }
+
+/* ========== PERFORMANCE OPTIMIZATIONS ========== */
+.low-performance .particle-background,
+.low-performance #wireframe-canvas,
+.low-performance #cursor-web {
+    display: none !important;
+}
+
+.low-performance .impact-card,
+.low-performance .recognition-card,
+.low-performance .model-card {
+    transition: transform 0.2s ease !important; /* Simpler transitions */
+}
+
+/* GPU acceleration hints */
+.cursor-dot,
+.cursor-outline,
+.navbar,
+.impact-card,
+.recognition-card,
+.model-card {
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Reduce motion if user prefers */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .particle-background,
+    #wireframe-canvas,
+    #cursor-web {
+        display: none !important;
+    }
+}

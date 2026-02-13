@@ -29,6 +29,20 @@ function preloadAllPages() {
     console.log('🚀 All pages preloaded for instant navigation');
 }
 
+// ========== PERFORMANCE OPTIMIZATIONS ==========
+// Detect low-performance devices
+const isLowPerfDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+    || window.innerWidth < 768
+    || window.navigator.hardwareConcurrency <= 4; // Less than 4 CPU cores
+
+if (isLowPerfDevice) {
+    // Disable heavy animations on low-end devices
+    document.documentElement.classList.add('low-performance');
+    
+    // Reduce particle count in background
+    window.particleCount = 10; // Will be used in createParticleBackground
+}
+
 // ========== PRELOAD SINGLE PAGE ON HOVER ==========
 function preloadPage(url) {
     if (url && !url.startsWith('#') && !url.startsWith('http') && !url.startsWith('javascript')) {
@@ -138,41 +152,44 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // ========== BLUR BACKGROUND ON SCROLL ==========
-    const navbar = document.querySelector('.navbar');
+// ========== OPTIMIZED SCROLL HANDLER ==========
+const navbar = document.querySelector('.navbar');
+
+function updateNavbarBlur() {
+    if (!navbar) return;
     
-    function updateNavbarBlur() {
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-            navbar.style.background = 'rgba(255, 255, 255, 0.85)';
-            navbar.style.backdropFilter = 'blur(20px) saturate(200%)';
-            navbar.style.webkitBackdropFilter = 'blur(20px) saturate(200%)';
-            navbar.style.boxShadow = '0 20px 50px rgba(26, 43, 60, 0.15)';
-            navbar.style.transform = 'translateX(-50%) scale(0.98) translateY(-2px)';
-        } else {
-            navbar.classList.remove('scrolled');
-            navbar.style.background = 'rgba(255, 255, 255, 0.75)';
-            navbar.style.backdropFilter = 'blur(12px) saturate(180%)';
-            navbar.style.webkitBackdropFilter = 'blur(12px) saturate(180%)';
-            navbar.style.boxShadow = '0 15px 40px rgba(26, 43, 60, 0.05)';
-            navbar.style.transform = 'translateX(-50%) scale(1) translateY(0)';
-        }
+    if (window.scrollY > 50) {
+        navbar.classList.add('scrolled');
+        navbar.style.cssText = `
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px) saturate(200%);
+            -webkit-backdrop-filter: blur(20px) saturate(200%);
+            box-shadow: 0 20px 50px rgba(26, 43, 60, 0.15);
+            transform: translateX(-50%) scale(0.98) translateY(-2px);
+            transition: all 0.3s ease;
+        `;
+    } else {
+        navbar.classList.remove('scrolled');
+        navbar.style.cssText = `
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            box-shadow: 0 15px 40px rgba(26, 43, 60, 0.05);
+            transform: translateX(-50%) scale(1) translateY(0);
+            transition: all 0.3s ease;
+        `;
     }
+}
+
+if (navbar) {
+    updateNavbarBlur();
     
-    if (navbar) {
-        updateNavbarBlur();
-        
-        let scrolling = false;
-        window.addEventListener('scroll', function() {
-            if (!scrolling) {
-                window.requestAnimationFrame(function() {
-                    updateNavbarBlur();
-                    scrolling = false;
-                });
-                scrolling = true;
-            }
-        });
-    }
+    let scrollTimeout;
+    window.addEventListener('scroll', () => {
+        if (scrollTimeout) cancelAnimationFrame(scrollTimeout);
+        scrollTimeout = requestAnimationFrame(updateNavbarBlur);
+    }, { passive: true }); // Add passive for better scroll performance
+}
     
     // ========== INITIALIZE 3D TILT ==========
     init3DTilt();
@@ -189,38 +206,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // ========== CUSTOM CURSOR ==========
-    const cursorDot = document.querySelector('.cursor-dot');
-    const cursorOutline = document.querySelector('.cursor-outline');
+// ========== OPTIMIZED CUSTOM CURSOR ==========
+const cursorDot = document.querySelector('.cursor-dot');
+const cursorOutline = document.querySelector('.cursor-outline');
+
+// Disable on mobile/touch devices
+if (cursorDot && cursorOutline && !('ontouchstart' in window)) {
+    // Use transform3d for GPU acceleration
+    document.addEventListener('mousemove', function(e) {
+        // Use requestAnimationFrame for smoothness
+        requestAnimationFrame(() => {
+            cursorDot.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+            cursorOutline.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
+        });
+    }, { passive: true });
     
-    if (cursorDot && cursorOutline) {
-        document.addEventListener('mousemove', function(e) {
-            cursorDot.style.left = e.clientX + 'px';
-            cursorDot.style.top = e.clientY + 'px';
-            cursorOutline.style.left = e.clientX + 'px';
-            cursorOutline.style.top = e.clientY + 'px';
-        });
-        
-        document.addEventListener('mousedown', function() {
-            cursorDot.style.transform = 'translate(-50%, -50%) scale(0.8)';
-            cursorOutline.style.transform = 'translate(-50%, -50%) scale(1.5)';
-        });
-        
-        document.addEventListener('mouseup', function() {
-            cursorDot.style.transform = 'translate(-50%, -50%) scale(1)';
-            cursorOutline.style.transform = 'translate(-50%, -50%) scale(1)';
-        });
-        
-        document.addEventListener('mouseleave', function() {
-            cursorDot.style.opacity = '0';
-            cursorOutline.style.opacity = '0';
-        });
-        
-        document.addEventListener('mouseenter', function() {
-            cursorDot.style.opacity = '1';
-            cursorOutline.style.opacity = '1';
-        });
-    }
+    document.addEventListener('mousedown', function() {
+        cursorDot.style.transform += ' scale(0.8)';
+        cursorOutline.style.transform += ' scale(1.5)';
+    }, { passive: true });
+    
+    document.addEventListener('mouseup', function() {
+        cursorDot.style.transform = cursorDot.style.transform.replace(' scale(0.8)', '');
+        cursorOutline.style.transform = cursorOutline.style.transform.replace(' scale(1.5)', '');
+    }, { passive: true });
+}
     
     // ========== MOBILE MENU ==========
     const hamburger = document.querySelector('.hamburger');
